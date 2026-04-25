@@ -1,0 +1,75 @@
+{
+  "model_name": "Random Forest",
+  "trained_at": "2026-04-25T21:32:50.967430",
+  "accuracy": 1.0,
+  "f1_score": 1.0,
+  "feature_cols": [
+    "temperature",
+    "humidity",
+    "precipitation",
+    "wind_speed",
+    "wind_direction",
+    "pressure",
+    "wind_gusts",
+    "cloud_cover",
+    "hour",
+    "month",
+    "is_storm_season",
+    "precipitation_3h_avg",
+    "precipitation_3h_max",
+    "wind_speed_3h_avg",
+    "wind_speed_3h_max"
+  ],
+  "label_names": {
+    "0": "Bình thường",
+    "1": "Cảnh báo",
+    "2": "Nguy hiểm"
+  },
+  "train_samples": 84211,
+  "test_samples": 21053,
+  "needs_scaling": true,
+  "feature_importance": {
+    "temperature": 0.016299845908049938,
+    "humidity": 0.08214207830352963,
+    "precipitation": 0.3156386715489963,
+    "wind_speed": 0.0006014151597788558,
+    "wind_direction": 0.027301940239088128,
+    "pressure": 0.003957068628416084,
+    "wind_gusts": 0.014751201921436074,
+    "cloud_cover": 0.03643059269420594,
+    "hour": 0.004080988661179398,
+    "month": 0.016079187329842568,
+    "is_storm_season": 0.006663398658817829,
+    "precipitation_3h_avg": 0.20589357706416084,
+    "precipitation_3h_max": 0.2617812747530941,
+    "wind_speed_3h_avg": 0.0037031720424573204,
+    "wind_speed_3h_max": 0.004675587086946907
+  },
+  "confusion_matrix": [
+    [
+      21038,
+      0
+    ],
+    [
+      0,
+      15
+    ]
+  ],
+  "all_models": [
+    {
+      "name": "XGBoost",
+      "accuracy": 0.9998575024937063,
+      "f1": 0.9998550473334441
+    },
+    {
+      "name": "Random Forest",
+      "accuracy": 1.0,
+      "f1": 1.0
+    },
+    {
+      "name": "Gradient Boosting",
+      "accuracy": 1.0,
+      "f1": 1.0
+    }
+  ]
+}

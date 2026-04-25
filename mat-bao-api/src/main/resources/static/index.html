@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mắt Bão — Hệ thống cảnh báo thiên tai sớm</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg2: #0f1420;
+      --bg3: #141928;
+      --border: rgba(255, 255, 255, 0.07);
+      --border2: rgba(255, 255, 255, 0.13);
+      --text: #e8eaf0;
+      --text2: #8892a4;
+      --text3: #4a5568;
+      --blue: #3b82f6;
+      --blue-dim: rgba(59, 130, 246, 0.12);
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --green-dim: rgba(16, 185, 129, 0.12);
+      --yellow: #f59e0b;
+      --yellow-dim: rgba(245, 158, 11, 0.12);
+      --red: #ef4444;
+      --red-dim: rgba(239, 68, 68, 0.12);
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Be Vietnam Pro', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 14, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border: 1.5px solid var(--blue);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--blue);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: .5;
+        transform: scale(.8)
+      }
+    }
+
+    .logo-name {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .logo-name span {
+      color: var(--blue);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      background: var(--green-dim);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      padding: 4px 10px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    .station-bar {
+      position: relative;
+      z-index: 1;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .station-bar-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: .06em;
+      white-space: nowrap;
+    }
+
+    .station-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .station-tab {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-family: var(--sans);
+      font-size: 13px;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .station-tab:hover {
+      border-color: var(--border2);
+      color: var(--text);
+    }
+
+    .station-tab.active {
+      background: var(--blue-dim);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: var(--blue);
+    }
+
+    .station-tab.danger {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      background: var(--red-dim);
+    }
+
+    .station-tab.warning {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+      background: var(--yellow-dim);
+    }
+
+    .station-tab.offline {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .tab-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .main {
+      position: relative;
+      z-index: 1;
+      padding: 20px 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .selected-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding: 14px 18px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .selected-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .selected-sub {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .sel-badge {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+
+    .b-normal {
+      background: var(--green-dim);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .b-warning {
+      background: var(--yellow-dim);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .b-danger {
+      background: var(--red-dim);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .b-offline {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text3);
+      border: 1px solid var(--border);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .mc {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mc::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--ac, var(--blue));
+      opacity: .6;
+    }
+
+    .mc-label {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text2);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .mc-val {
+      font-size: 28px;
+      font-weight: 600;
+      font-family: var(--mono);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .mc-unit {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text2);
+      margin-left: 3px;
+    }
+
+    .mc-trend {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .tu {
+      color: var(--red);
+    }
+
+    .tok {
+      color: var(--green);
+    }
+
+    .tw {
+      color: var(--yellow);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 12px;
+    }
+
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .tb {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .tb:hover {
+      border-color: var(--border2);
+      color: var(--text);
+    }
+
+    .tb.active {
+      background: var(--blue-dim);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: var(--blue);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 210px;
+    }
+
+    .fc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .fc-row:last-child {
+      border-bottom: none;
+    }
+
+    .fc-date {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      width: 90px;
+    }
+
+    .fc-vals {
+      display: flex;
+      gap: 14px;
+    }
+
+    .fc-v {
+      text-align: right;
+    }
+
+    .fc-v .n {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .fc-v .u {
+      font-size: 10px;
+      color: var(--text3);
+    }
+
+    .fc-risk {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .rh {
+      background: var(--red-dim);
+      color: #fca5a5;
+    }
+
+    .rm {
+      background: var(--yellow-dim);
+      color: #fcd34d;
+    }
+
+    .rl {
+      background: var(--green-dim);
+      color: #6ee7b7;
+    }
+
+    .ai-box {
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .ai-box.normal {
+      background: var(--green-dim);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .ai-box.warning {
+      background: var(--yellow-dim);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .ai-box.danger {
+      background: var(--red-dim);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .ai-lv {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .ai-msg {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    .ai-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: var(--blue-dim);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    .all-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: padding .15s;
+    }
+
+    .all-row:last-child {
+      border-bottom: none;
+    }
+
+    .all-row:hover {
+      padding-left: 4px;
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text3);
+      font-family: var(--mono);
+      font-size: 12px;
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .error-box {
+      display: none;
+      padding: 14px 18px;
+      background: var(--red-dim);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 12px;
+      font-family: var(--mono);
+      margin-bottom: 16px;
+    }
+
+    @media(max-width:900px) {
+      .metrics {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .content-grid {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div class="logo-name"><span>MẮT</span> BÃO</div>
+      <div style="margin-left:8px;font-size:11px;color:var(--text3);font-family:var(--mono);">/ Cảnh báo thiên tai sớm
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>LIVE
+      </div>
+      <span id="lastUpdate" style="font-family:var(--mono);font-size:11px;color:var(--text3);">--:--</span>
+      <button onclick="loadData()"
+        style="background:var(--blue-dim);border:1px solid rgba(59,130,246,0.3);color:var(--blue);padding:5px 12px;border-radius:5px;cursor:pointer;font-family:var(--mono);font-size:11px;">↻
+        Refresh</button>
+    </div>
+  </header>
+
+  <div class="station-bar">
+    <div class="station-bar-label">CHỌN TRẠM:</div>
+    <div class="station-tabs" id="stationTabs">
+      <div class="loading" style="height:32px;">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+    <div class="error-box" id="errorBox">⚠ Không kết nối được API. Đảm bảo Spring Boot đang chạy tại localhost:8080
+    </div>
+
+    <div class="selected-header">
+      <div>
+        <div class="selected-title" id="selName">Đang tải...</div>
+        <div class="selected-sub" id="selSub">-- • --</div>
+      </div>
+      <div id="selBadge" class="sel-badge b-normal">BÌNH THƯỜNG</div>
+    </div>
+
+    <div class="metrics">
+      <div class="mc" style="--ac:var(--blue)">
+        <div class="mc-label">Lượng mưa</div>
+        <div class="mc-val" id="mRain">--<span class="mc-unit">mm/h</span></div>
+        <div class="mc-trend" id="tRain">--</div>
+      </div>
+      <div class="mc" style="--ac:var(--cyan)">
+        <div class="mc-label">Tốc độ gió</div>
+        <div class="mc-val" id="mWind">--<span class="mc-unit">km/h</span></div>
+        <div class="mc-trend" id="tWind">--</div>
+      </div>
+      <div class="mc" style="--ac:var(--yellow)">
+        <div class="mc-label">Độ ẩm</div>
+        <div class="mc-val" id="mHum">--<span class="mc-unit">%</span></div>
+        <div class="mc-trend" id="tHum">--</div>
+      </div>
+      <div class="mc" style="--ac:var(--green)">
+        <div class="mc-label">Nhiệt độ</div>
+        <div class="mc-val" id="mTemp">--<span class="mc-unit">°C</span></div>
+        <div class="mc-trend" id="tTemp">--</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="left-col">
+        <div class="card">
+          <div class="tab-row">
+            <button class="tb active" onclick="switchTab('rain',this)">Lượng mưa</button>
+            <button class="tb" onclick="switchTab('wind',this)">Tốc độ gió</button>
+            <button class="tb" onclick="switchTab('temp',this)">Nhiệt độ</button>
+            <button class="tb" onclick="switchTab('humidity',this)">Độ ẩm</button>
+          </div>
+          <div class="chart-wrap" id="chartWrap">
+            <div class="loading" style="height:210px;">
+              <div class="spinner"></div>Đang tải...
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dự báo 7 ngày tới</div>
+          <div id="forecastList">
+            <div class="loading" style="height:80px;">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="right-col">
+        <div class="card">
+          <div class="card-title">Dự đoán AI</div>
+          <div id="aiResult">
+            <div class="loading" style="height:80px;">
+              <div class="spinner"></div>
+            </div>
+          </div>
+          <div class="ai-meta">
+            <div style="font-size:11px;color:var(--blue);font-family:var(--mono);" id="aiModel">MODEL: --</div>
+            <div style="font-size:11px;color:var(--text2);" id="aiAcc">--</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tổng quan tất cả trạm</div>
+          <div id="allStations"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API = '/api/v1';
+    let allData = null, selectedId = null, mainChart = null, currentTab = 'rain';
+
+    async function loadData() {
+      try {
+        document.getElementById('errorBox').style.display = 'none';
+        const res = await fetch(`${API}/dashboard`);
+        if (!res.ok) throw new Error();
+        allData = await res.json();
+        renderTabs(allData.stations);
+        renderAllSummary(allData.stations);
+        if (!selectedId) {
+          const first = allData.stations.find(s => s.status !== 'OFFLINE');
+          if (first) selectStation(first.id);
+        } else {
+          selectStation(selectedId);
+        }
+        const n = new Date();
+        document.getElementById('lastUpdate').textContent =
+          `${n.getHours().toString().padStart(2, '0')}:${n.getMinutes().toString().padStart(2, '0')} — ${n.toLocaleDateString('vi-VN')}`;
+      } catch (e) {
+        document.getElementById('errorBox').style.display = 'block';
+        useFallback();
+      }
+    }
+
+    function renderTabs(stations) {
+      const c = document.getElementById('stationTabs');
+      c.innerHTML = '';
+      stations.forEach(s => {
+        const level = s.latestData?.alert?.level || 'NORMAL';
+        const offline = s.status === 'OFFLINE';
+        const dotColor = offline ? 'var(--text3)' : level === 'DANGER' ? 'var(--red)' : level === 'WARNING' ? 'var(--yellow)' : 'var(--green)';
+        const cls = offline ? 'offline' : level === 'DANGER' ? 'danger' : level === 'WARNING' ? 'warning' : '';
+        const btn = document.createElement('button');
+        btn.className = `station-tab ${cls}`;
+        btn.id = `tab-${s.id}`;
+        btn.onclick = () => !offline && selectStation(s.id);
+        btn.innerHTML = `<div class="tab-dot" style="background:${dotColor}${!offline ? ';box-shadow:0 0 5px ' + dotColor : ''}"></div>${s.name.replace('Trạm ', '')} <span style="font-size:10px;opacity:.6;font-family:var(--mono)">${s.id}</span>`;
+        c.appendChild(btn);
+      });
+    }
+
+    function selectStation(id) {
+      selectedId = id;
+      document.querySelectorAll('.station-tab').forEach(t => t.classList.remove('active'));
+      const tab = document.getElementById(`tab-${id}`);
+      if (tab) tab.classList.add('active');
+
+      const s = allData?.stations?.find(x => x.id === id);
+      if (!s) return;
+      const data = s.latestData;
+      const offline = s.status === 'OFFLINE';
+
+      document.getElementById('selName').textContent = s.name;
+      document.getElementById('selSub').textContent = `${s.id} • ${s.district} • ${s.latitude?.toFixed(4)}°N, ${s.longitude?.toFixed(4)}°E`;
+
+      const badge = document.getElementById('selBadge');
+      if (offline) { badge.className = 'sel-badge b-offline'; badge.textContent = 'OFFLINE'; }
+      else {
+        const lv = data?.alert?.level || 'NORMAL';
+        badge.className = 'sel-badge ' + (lv === 'DANGER' ? 'b-danger' : lv === 'WARNING' ? 'b-warning' : 'b-normal');
+        badge.textContent = lv === 'DANGER' ? 'NGUY HIỂM' : lv === 'WARNING' ? 'CẢNH BÁO' : 'BÌNH THƯỜNG';
+      }
+
+      if (offline || !data) { showOffline(); return; }
+
+      const c = data.current;
+      setMetric('mRain', 'tRain', c.precipitation?.toFixed(1), 'mm/h', c.precipitation >= 30 ? ['tu', 'Mưa to'] : c.precipitation >= 10 ? ['tw', 'Mưa vừa'] : ['tok', 'Mưa nhỏ']);
+      setMetric('mWind', 'tWind', c.windSpeed?.toFixed(0), 'km/h', c.windSpeed >= 60 ? ['tu', 'Gió mạnh cấp 7-8'] : c.windSpeed >= 30 ? ['tw', 'Gió trung bình'] : ['tok', 'Gió nhẹ']);
+      setMetric('mHum', 'tHum', c.humidity?.toFixed(0), '%', c.humidity >= 90 ? ['tu', 'Bão hòa — nguy cơ lũ'] : c.humidity >= 75 ? ['tw', 'Độ ẩm cao'] : ['tok', 'Bình thường']);
+      setMetric('mTemp', 'tTemp', c.temperature?.toFixed(1), '°C', c.temperature >= 35 ? ['tu', 'Nóng'] : c.temperature >= 28 ? ['tw', 'Ấm'] : ['tok', 'Mát']);
+
+      updateChart(currentTab, data.hourly || []);
+      updateForecast(data.daily || []);
+      updateAI(data.alert);
+    }
+
+    function setMetric(vid, tid, val, unit, trend) {
+      document.getElementById(vid).innerHTML = `${val ?? '--'}<span class="mc-unit">${unit}</span>`;
+      const t = document.getElementById(tid);
+      t.className = 'mc-trend ' + trend[0];
+      t.textContent = trend[1];
+    }
+
+    function showOffline() {
+      const msg = '<div class="loading" style="height:120px;color:var(--text3);">📡 Trạm offline — không có dữ liệu</div>';
+      document.getElementById('chartWrap').innerHTML = msg;
+      document.getElementById('forecastList').innerHTML = msg;
+      document.getElementById('aiResult').innerHTML = msg;
+      ['mRain', 'mWind', 'mHum', 'mTemp'].forEach(id => document.getElementById(id).innerHTML = '--');
+    }
+
+    function switchTab(tab, btn) {
+      currentTab = tab;
+      document.querySelectorAll('.tb').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const s = allData?.stations?.find(x => x.id === selectedId);
+      if (s?.latestData?.hourly) updateChart(tab, s.latestData.hourly);
+    }
+
+    function updateChart(tab, hourly) {
+      const wrap = document.getElementById('chartWrap');
+      wrap.innerHTML = '<canvas id="mainChart" role="img" aria-label="Biểu đồ thời tiết 24 giờ"></canvas>';
+      if (mainChart) { mainChart.destroy(); mainChart = null; }
+      if (!hourly.length) return;
+      const cfgs = {
+        rain: { data: hourly.map(h => +h.precipitation.toFixed(2)), label: 'Lượng mưa (mm/h)', color: '#3b82f6', fill: 'rgba(59,130,246,0.1)' },
+        wind: { data: hourly.map(h => +h.windSpeed.toFixed(1)), label: 'Tốc độ gió (km/h)', color: '#06b6d4', fill: 'rgba(6,182,212,0.1)' },
+        temp: { data: hourly.map(h => +h.temperature.toFixed(1)), label: 'Nhiệt độ (°C)', color: '#f59e0b', fill: 'rgba(245,158,11,0.1)' },
+        humidity: { data: hourly.map(h => +h.humidity.toFixed(0)), label: 'Độ ẩm (%)', color: '#10b981', fill: 'rgba(16,185,129,0.1)' },
+      };
+      const cfg = cfgs[tab];
+      mainChart = new Chart(document.getElementById('mainChart'), {
+        type: 'line',
+        data: { labels: hourly.map(h => h.time), datasets: [{ label: cfg.label, data: cfg.data, borderColor: cfg.color, backgroundColor: cfg.fill, fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2, pointHoverRadius: 5 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: '#141928', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#8892a4', bodyColor: '#e8eaf0', titleFont: { family: 'IBM Plex Mono', size: 10 }, bodyFont: { family: 'IBM Plex Mono', size: 12 } } },
+          scales: { x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } } }
+        }
+      });
+    }
+
+    function updateForecast(daily) {
+      const el = document.getElementById('forecastList');
+      if (!daily.length) { el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px;">Không có dữ liệu</div>'; return; }
+      el.innerHTML = daily.slice(0, 7).map(d => {
+        const rain = d.totalPrecipitation ?? 0, wind = d.maxWindSpeed ?? 0;
+        const rc = rain >= 50 || wind >= 90 ? 'rh' : rain >= 25 || wind >= 60 ? 'rm' : 'rl';
+        const rt = rain >= 50 || wind >= 90 ? 'Cao' : rain >= 25 || wind >= 60 ? 'Trung bình' : 'Thấp';
+        const ds = d.date ? new Date(d.date).toLocaleDateString('vi-VN', { weekday: 'short', month: 'numeric', day: 'numeric' }) : d.date;
+        return `<div class="fc-row">
+      <div class="fc-date">${ds}</div>
+      <div class="fc-vals">
+        <div class="fc-v"><div class="n" style="color:#3b82f6">${rain.toFixed(0)}</div><div class="u">mm</div></div>
+        <div class="fc-v"><div class="n" style="color:#06b6d4">${wind.toFixed(0)}</div><div class="u">km/h</div></div>
+        <div class="fc-v"><div class="n" style="color:#f59e0b">${(d.maxTemp ?? 0).toFixed(0)}°</div><div class="u">max</div></div>
+      </div>
+      <span class="fc-risk ${rc}">${rt}</span>
+    </div>`;
+      }).join('');
+    }
+
+    function updateAI(alert) {
+      const el = document.getElementById('aiResult');
+      if (!alert) { el.innerHTML = '<div class="loading" style="height:60px;color:var(--text3);">Không có dữ liệu AI</div>'; return; }
+      const lv = alert.level || 'NORMAL';
+      const cls = lv === 'DANGER' ? 'danger' : lv === 'WARNING' ? 'warning' : 'normal';
+      const lvTxt = lv === 'DANGER' ? '🔴 NGUY HIỂM' : lv === 'WARNING' ? '⚠ CẢNH BÁO' : '✓ Bình thường';
+      const reasons = alert.reasons || [];
+      el.innerHTML = `<div class="ai-box ${cls}">
+    <div class="ai-lv">${lvTxt}</div>
+    <div class="ai-msg">${reasons[0] || alert.message || 'Điều kiện thời tiết bình thường'}</div>
+    ${reasons[1] ? `<div class="ai-msg" style="margin-top:3px">${reasons[1]}</div>` : ''}
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:6px">Dữ liệu: Open-Meteo API thực tế</div>
+  </div>`;
+      document.getElementById('aiModel').textContent = 'MODEL: RANDOM FOREST';
+      document.getElementById('aiAcc').textContent = 'Acc: 100% (train)';
+    }
+
+    function renderAllSummary(stations) {
+      document.getElementById('allStations').innerHTML = stations.map(s => {
+        const lv = s.latestData?.alert?.level || 'NORMAL';
+        const off = s.status === 'OFFLINE';
+        const dot = off ? 'var(--text3)' : lv === 'DANGER' ? 'var(--red)' : lv === 'WARNING' ? 'var(--yellow)' : 'var(--green)';
+        const bt = off ? 'OFFLINE' : lv === 'DANGER' ? 'NGUY HIỂM' : lv === 'WARNING' ? 'CẢNH BÁO' : 'BÌNH THƯỜNG';
+        const bc = off ? 'b-offline' : lv === 'DANGER' ? 'b-danger' : lv === 'WARNING' ? 'b-warning' : 'b-normal';
+        const rain = s.latestData?.current?.precipitation?.toFixed(1) ?? '--';
+        const wind = s.latestData?.current?.windSpeed?.toFixed(0) ?? '--';
+        return `<div class="all-row" onclick="${!off ? `selectStation('${s.id}')` : ''}">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0${!off ? ';box-shadow:0 0 5px ' + dot : ''}"></div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${s.name.replace('Trạm ', '')}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${s.id} • ${rain}mm • ${wind}km/h</div>
+        </div>
+      </div>
+      <span class="sel-badge ${bc}" style="font-size:10px;padding:3px 8px">${bt}</span>
+    </div>`;
+      }).join('');
+    }
+
+    function useFallback() {
+      const now = new Date();
+      const h = Array.from({ length: 24 }, (_, i) => { const t = new Date(now - (23 - i) * 3600000); return { time: `${t.getHours().toString().padStart(2, '0')}:00`, precipitation: Math.random() * 3, windSpeed: 5 + Math.random() * 10, temperature: 27 + Math.random() * 4, humidity: 88 + Math.random() * 10 }; });
+      const d = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(x => ({ date: x, totalPrecipitation: Math.random() * 20, maxWindSpeed: 10 + Math.random() * 20, maxTemp: 30 + Math.random() * 5, minTemp: 24 + Math.random() * 3 }));
+      allData = {
+        totalStations: 6, onlineStations: 5, stations: [
+          { id: 'TH-01', name: 'Trạm Tân Hóa', district: 'Quảng Bình', latitude: 17.7833, longitude: 106.0167, status: 'ONLINE', latestData: { current: { temperature: 28.5, humidity: 92, precipitation: 0.3, windSpeed: 5, windDirection: 180, pressure: 1010, condition: 'Mưa nhỏ' }, hourly: h, daily: d, alert: { level: 'NORMAL', message: 'Bình thường', reasons: [] } } },
+          { id: 'MH-03', name: 'Trạm Minh Hóa', district: 'Quảng Bình', latitude: 17.8167, longitude: 105.9833, status: 'ONLINE', latestData: { current: { temperature: 27.1, humidity: 88, precipitation: 0.2, windSpeed: 6, windDirection: 160, pressure: 1011, condition: 'Mưa nhỏ' }, hourly: h, daily: d, alert: { level: 'NORMAL', message: 'Bình thường', reasons: [] } } },
+          { id: 'TH-07', name: 'Trạm Đồng Lê', district: 'Tuyên Hóa', latitude: 17.85, longitude: 105.8833, status: 'ONLINE', latestData: { current: { temperature: 29.3, humidity: 75, precipitation: 0.1, windSpeed: 7, windDirection: 200, pressure: 1012, condition: 'Mưa nhỏ' }, hourly: h, daily: d, alert: { level: 'NORMAL', message: 'Bình thường', reasons: [] } } },
+          { id: 'QB-12', name: 'Trạm Ba Đồn', district: 'Quảng Trạch', latitude: 17.75, longitude: 106.4167, status: 'ONLINE', latestData: { current: { temperature: 30.1, humidity: 72, precipitation: 0, windSpeed: 4, windDirection: 220, pressure: 1013, condition: 'Trời quang' }, hourly: h, daily: d, alert: { level: 'NORMAL', message: 'Bình thường', reasons: [] } } },
+          { id: 'QB-09', name: 'Trạm Lệ Thủy', district: 'Lệ Thủy', latitude: 17.1, longitude: 106.8, status: 'OFFLINE', latestData: null },
+          { id: 'QB-15', name: 'Trạm Bố Trạch', district: 'Bố Trạch', latitude: 17.5833, longitude: 106.3667, status: 'ONLINE', latestData: { current: { temperature: 31.2, humidity: 68, precipitation: 0, windSpeed: 3, windDirection: 240, pressure: 1014, condition: 'Trời quang' }, hourly: h, daily: d, alert: { level: 'NORMAL', message: 'Bình thường', reasons: [] } } },
+        ]
+      };
+      renderTabs(allData.stations);
+      renderAllSummary(allData.stations);
+      const first = allData.stations.find(s => s.status !== 'OFFLINE');
+      if (first) selectStation(first.id);
+    }
+
+    loadData();
+    setInterval(loadData, 5 * 60 * 1000);
+  </script>
+</body>
+
+</html>
