@@ -1,4 +1,4 @@
-# 🌀 Mắt Bão — Hệ thống IoT & AI Cảnh báo Thiên tai Sớm
+# 🌀 Mắt Bão — Hệ thống IoT & AI Cảnh báo Thiên tai Sớm với các vùng hẻo lánh
 
 ## Giới thiệu
 Hệ thống thu thập dữ liệu thời tiết thực tế từ 6 trạm tại Quảng Bình,
